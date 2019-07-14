@@ -4,7 +4,6 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include <string>
 #include <vector>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -21,53 +20,64 @@ class VideoProcessor {
 
 private:
 
-	cv::VideoCapture capture;	// OpenCV视频捕获对象
+	// the OpenCV video capture object
+	cv::VideoCapture capture;
 
-	void (*process)(cv::Mat&, cv::Mat&);	// 处理每一帧时都会调用的回调函数
+	// the callback function to be called for the processing of each frame
+	void (*process)(cv::Mat&, cv::Mat&);
 
-	FrameProcessor* frameProcessor;	// the pointer to the class implementing the FrameProcessor interface
+	// the pointer to the class implementing the FrameProcessor interface
+	FrameProcessor* frameProcessor;
 
-	bool callIt;	// 表示该回调函数是否会被调用
+	// a bool to determine if the process callback will be called
+	bool callIt;
 
-	std::string windowNameInput;	// 输入窗口的显示名称
+	// Input and Output display window name
+	std::string windowNameInput;
+	std::string windowNameOutput;
 
-	std::string windowNameOutput; // 输出窗口的显示名称
+	// delay between each frame processing
+	int delay;
 
-	int delay; // 帧之间的延时
+	// number of processed frames
+	long fnumber;
 
-	long fnumber; // 已经处理的帧数
+	// stop at this frame number
+	long frameToStop;
 
-	long frameToStop; // 达到这个帧数时结束
-
-	bool stop; // 结束处理
+	// to stop the processing
+	bool stop;
 
 	// vector of image filename to be used as input
 	std::vector<std::string> images;
+
 	// image vector iterator
 	std::vector<std::string>::const_iterator itImg;
 
 	// the OpenCV video writer object
 	cv::VideoWriter writer;
+
 	// output filename
 	std::string outputFile;
 
 	// current index for output images
 	int currentIndex;
+
 	// number of digits in output image filename
 	int digits;
+
 	// extension of output images
 	std::string extension;
 
-	// to get the next frame 
-	// could be: video file; camera; vector of images
+	// to get the next frame, could be video file; camera; vector of images
 	bool readNextFrame(cv::Mat& frame) {
 
 		if (images.size() == 0)
 			return capture.read(frame);
+
 		else {
 
 			if (itImg != images.end()) {
-
 				frame = cv::imread(*itImg);
 				itImg++;
 				return frame.data != 0;
@@ -77,18 +87,16 @@ private:
 		}
 	}
 
-	// to write the output frame 
-	// could be: video file or images
+	// to write the output frame, could be video file or images
 	void writeNextFrame(cv::Mat& frame) {
 
 		if (extension.length()) { // then we write images
 
-			std::stringstream ss;
+			std::stringstream ss; // need #include <sstream>
 			ss << outputFile << std::setfill('0') << std::setw(digits) << currentIndex++ << extension;
 			cv::imwrite(ss.str(), frame);
-
 		}
-		else { // then write video file
+		else {
 
 			writer.write(frame);
 		}
@@ -97,16 +105,24 @@ private:
 public:
 
 	// Constructor setting the default values
-	VideoProcessor() : callIt(false), delay(-1),
-		fnumber(0), stop(false), digits(0), frameToStop(-1),
-		process(0), frameProcessor(0) {}
+	VideoProcessor() :
+		callIt(false),
+		delay(-1),
+		fnumber(0),
+		stop(false),
+		digits(0),
+		frameToStop(-1),
+		process(0),
+		frameProcessor(0) {}
+
+	~VideoProcessor();
 
 	// set the name of the video file
 	bool setInput(std::string filename) {
 
 		fnumber = 0;
-		// In case a resource was already 
-		// associated with the VideoCapture instance
+
+		// In case a resource was already associated with the VideoCapture instance
 		capture.release();
 		images.clear();
 
@@ -118,12 +134,9 @@ public:
 	bool setInput(int id) {
 
 		fnumber = 0;
-		// In case a resource was already 
-		// associated with the VideoCapture instance
 		capture.release();
 		images.clear();
 
-		// Open the video file
 		return capture.open(id);
 	}
 
@@ -131,8 +144,6 @@ public:
 	bool setInput(const std::vector<std::string>& imgs) {
 
 		fnumber = 0;
-		// In case a resource was already 
-		// associated with the VideoCapture instance
 		capture.release();
 
 		// the input will be this vector of images
@@ -142,8 +153,7 @@ public:
 		return true;
 	}
 
-	// set the output video file
-	// by default the same parameters than input video will be used
+	// set the output video file by default the same parameters than input video will be used
 	bool setOutput(const std::string& filename, int codec = 0, double framerate = 0.0, bool isColor = true) {
 
 		outputFile = filename;
@@ -153,27 +163,24 @@ public:
 			framerate = getFrameRate(); // same as input
 
 		char c[4];
-		// use same codec as input
-		if (codec == 0) {
-			codec = getCodec(c);
-		}
+		if (codec == 0)
+			codec = getCodec(c); // same as input
 
 		// Open output video
-		return writer.open(outputFile, // filename
-			codec, // codec to be used 
-			framerate,      // frame rate of the video
+		return writer.open(outputFile,
+			codec,
+			framerate,
 			getFrameSize(), // frame size
-			isColor);       // color video?
+			isColor);
 	}
 
-	// set the output as a series of image files
-	// extension must be ".jpg", ".bmp" ...
+	// set the output as a series of image files,extension must be ".jpg",".bmp"...
 	bool setOutput(const std::string& filename, // filename prefix
-		const std::string& ext, // image file extension 
-		int numberOfDigits = 3,   // number of digits
-		int startIndex = 0) {     // start index
+		const std::string& ext, // image file extension
+		int numberOfDigits = 3, // number of digits
+		int startIndex = 0) {  // start index
 
-		// number of digits must be positive
+// number of digits must be positive
 		if (numberOfDigits < 0)
 			return false;
 
@@ -183,17 +190,19 @@ public:
 
 		// number of digits in the file numbering scheme
 		digits = numberOfDigits;
+
 		// start numbering at this index
 		currentIndex = startIndex;
 
 		return true;
 	}
 
-	// 设置对每一帧调用的回调函数
-	void setFrameProcessor(void (*frameProcessingCallback)(cv::Mat&, cv::Mat&)) {
+	// set the callback function that will be called for each frame
+	void setFrameProcessor(void (*frameProcessingCallback) (cv::Mat&, cv::Mat&)) {
 
 		// invalidate frame processor class instance
 		frameProcessor = 0;
+
 		// this is the frame processor function that will be called
 		process = frameProcessingCallback;
 		callProcess();
@@ -204,7 +213,7 @@ public:
 
 		// invalidate callback function
 		process = 0;
-		// this is the frame processor instance that will be called
+
 		frameProcessor = frameProcessorPtr;
 		callProcess();
 	}
@@ -250,16 +259,14 @@ public:
 		windowNameOutput.clear();
 	}
 
-	// set a delay between each frame
-	// 0 means wait at each frame
-	// negative means no delay
+	// set a delay between each frame, 0 means wait at each frame, negative means no delay
 	void setDelay(int d) {
 
 		delay = d;
 	}
 
 	// a count is kept of the processed frames
-	long getNumberOfProcessedFrames() {
+	long getNumberOfprocessedFrames() {
 
 		return fnumber;
 	}
@@ -276,7 +283,7 @@ public:
 			return cv::Size(w, h);
 
 		}
-		else { // if input is vector of images
+		else {    // if input is vector of images
 
 			cv::Mat tmp = cv::imread(images[0]);
 			if (!tmp.data) return cv::Size(0, 0);
@@ -294,7 +301,7 @@ public:
 			return f;
 
 		}
-		else { // if input is vector of images
+		else {
 
 			return static_cast<long>(itImg - images.begin());
 		}
@@ -382,7 +389,7 @@ public:
 			return capture.set(cv::CAP_PROP_POS_MSEC, pos);
 	}
 
-	// go to this position expressed in fraction of total film length
+	// go to this posion expressed in fraction of total film length
 	bool setRelativePosition(double pos) {
 
 		// for vector of images
@@ -392,13 +399,11 @@ public:
 			long posI = static_cast<long>(pos * images.size() + 0.5);
 			itImg = images.begin() + posI;
 			// is it a valid position?
-			if (posI < images.size())
-				return true;
-			else
-				return false;
+			if (posI < images.size()) return true;
+			else return false;
 
 		}
-		else { // if input is a capture device
+		else {
 
 			return capture.set(cv::CAP_PROP_POS_AVI_RATIO, pos);
 		}
@@ -410,13 +415,13 @@ public:
 		stop = true;
 	}
 
-	// Is the process stopped?
+	// is the process stopped?
 	bool isStopped() {
 
 		return stop;
 	}
 
-	// Is a capture device opened?
+	// is the capture device opened?
 	bool isOpened() {
 
 		return capture.isOpened() || !images.empty();
@@ -431,16 +436,14 @@ public:
 		cv::Mat output;
 
 		// if no capture device has been set
-		if (!isOpened())
-			return;
+		if (!isOpened()) return;
 
 		stop = false;
 
 		while (!isStopped()) {
 
 			// read next frame if any
-			if (!readNextFrame(frame))
-				break;
+			if (!readNextFrame(frame)) break;
 
 			// display input frame
 			if (windowNameInput.length() != 0)
@@ -454,6 +457,7 @@ public:
 					process(frame, output);
 				else if (frameProcessor)
 					frameProcessor->process(frame, output);
+
 				// increment frame number
 				fnumber++;
 
@@ -480,6 +484,7 @@ public:
 				stopIt();
 		}
 	}
+
 };
 
 #endif
