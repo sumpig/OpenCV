@@ -115,8 +115,6 @@ public:
 		process(0),
 		frameProcessor(0) {}
 
-	~VideoProcessor();
-
 	// set the name of the video file
 	bool setInput(std::string filename) {
 
